@@ -125,6 +125,8 @@ public:
   void count (Dataset& dataset);
   void fit();
 
+  void logMCMCparams (const vguard<Sampler>& samplers, ostream& out);
+
   void simulate();
   
   struct HistoryLogger : Sampler::Logger {
@@ -134,6 +136,7 @@ public:
     HistoryLogger (Reconstructor& recon, const string& name);
     ~HistoryLogger();
     void logHistory (const Sampler::History& history);
+    void logMCMCparams (const vguard<Sampler>& samplers);
   };
 
   void writeTreeAlignment (const Tree& tree, const vguard<FastSeq>& gapped, const string& name, ostream& out, bool isReconstruction = false, const ReconPostProbMap* postProb = NULL) const;

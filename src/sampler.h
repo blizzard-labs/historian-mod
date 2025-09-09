@@ -327,6 +327,7 @@ struct Sampler : TreeAlignFuncs {
   // Sampler::Logger
   struct Logger {
     virtual void logHistory (const History& history) = 0;
+    virtual void logMCMCparams (const vguard<Sampler>& samplers) = 0;
   };
   
   // Sampler::Move
@@ -406,7 +407,7 @@ struct Sampler : TreeAlignFuncs {
 
   void sample (random_engine& generator);
   
-  static void run (vguard<Sampler>& samplers, random_engine& generator, unsigned int nSamples = 1);
+  static void run (vguard<Sampler>& samplers, random_engine& generator, unsigned int nSamples = 1, const vguard<Logger*>& loggers = vguard<Logger*>());
 
   // Sampler summary methods
   string moveStats() const;

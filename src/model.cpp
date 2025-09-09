@@ -939,7 +939,7 @@ void EventCounts::writeJson (ostream& out) const {
   out << " \"sub\":" << endl;
   writeSubCounts (out, rootCount, subCount, 2);
   out << "," << endl;
-  out << " \"logLikelihood\": " << indelCounts.lp << endl;
+  out << " \"logLikelihood\": " << std::fixed << std::setprecision(15) << indelCounts.lp << endl;
   out << "}" << endl;
 }
 

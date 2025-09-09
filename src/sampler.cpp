@@ -1708,7 +1708,7 @@ void Sampler::sample (random_engine& generator) {
     }
 }
 
-void Sampler::run (vguard<Sampler>& samplers, random_engine& generator, unsigned int nSamples) {
+void Sampler::run (vguard<Sampler>& samplers, random_engine& generator, unsigned int nSamples, const vguard<Logger*>& loggers) {
   ProgressLog (plog, 2);
   plog.initProgress ("MCMC sampling run");
 
@@ -1726,6 +1726,10 @@ void Sampler::run (vguard<Sampler>& samplers, random_engine& generator, unsigned
     
     // sample
     samplers[nSampler].sample (generator);
+
+    // log
+    for (auto& logger : loggers)
+      logger->logMCMCparams(samplers);
   }
 
   // log stats

@@ -1290,14 +1290,42 @@ void Reconstructor::count (Dataset& dataset) {
     dataCounts.indelCounts += dataset.eigenCounts.indelCounts;
 }
 
+
+void Reconstructor::logMCMCparams(const vguard<Sampler>& samplers, ostream& out) {
+  for (const auto& sampler : samplers) {
+    const auto& history = sampler.currentHistory;
+    const double logLike = TreeAlignFuncs::logLikelihood (model, history.tree, history.gapped);
+    EigenCounts eigenCounts (model.components(), model.alphabetSize());
+    eigenCounts.accumulateCounts (model, Alignment(history.gapped), history.tree, true, true);
+    const EventCounts eventCounts = eigenCounts.transform (model);
+    const double totalIndels = eventCounts.indelCounts.ins + eventCounts.indelCounts.del;
+    double totalSubstitutions = 0;
+    for (const auto& c : eventCounts.subCount)
+      for (const auto& r : c)
+        for (const auto& s : r)
+          totalSubstitutions += s;
+    const double meanIndelLength = model.expectedInsertionLength();
+    const double indelRate = model.insRate;
+    out << std::fixed << std::setprecision(15) << logLike << "\t" << totalIndels << "\t" << totalSubstitutions << "\t" << meanIndelLength << "\t" << indelRate;
+    for (const auto& p : model.insProb)
+      for (size_t i = 0; i < p->size; ++i)
+        out << "\t" << gsl_vector_get(p, i);
+    out << endl;
+  }
+}
+
 Reconstructor::HistoryLogger::HistoryLogger (Reconstructor& recon, const string& name)
   : recon (&recon),
     out (NULL),
     name (name)
 {
-  if (recon.outputTraceMCMC && recon.mcmcTraceFilename.size())
-    out = new ofstream (recon.mcmcTraceFilename + "." + to_string(++recon.mcmcTraceFiles));
+    if (recon.outputTraceMCMC && recon.mcmcTraceFilename.size()) {
+    const string filename = recon.mcmcTraceFilename + "." + to_string(++recon.mcmcTraceFiles);
+    out = new ofstream (filename);
+    *out << "likelihood\tindels\tsubstitutions\tmean_indel_length\tindel_rate\t" << to_string_join(recon.model.alphabet) << endl;
+  }
 }
+
 
 Reconstructor::HistoryLogger::~HistoryLogger() {
   if (out)
@@ -1307,6 +1335,11 @@ Reconstructor::HistoryLogger::~HistoryLogger() {
 void Reconstructor::HistoryLogger::logHistory (const Sampler::History& history) {
   if (recon->outputTraceMCMC)
     recon->writeTreeAlignment (history.tree, history.gapped, name, out ? *out : cout, true);
+}
+
+void Reconstructor::HistoryLogger::logMCMCparams (const vguard<Sampler>& samplers) {
+  if (recon->outputTraceMCMC)
+    recon->logMCMCparams(samplers, out ? *out : cout);
 }
 
 void Reconstructor::sampleAll() {
@@ -1346,7 +1379,10 @@ void Reconstructor::sampleAll() {
     LogThisAt(1,"Starting MCMC sampler ("
 	      << plural(mcmcSamplesPerSeq,"sample") << " per node, "
 	      << plural(nSamples,"sample") << " in total)" << endl);
-    Sampler::run (samplers, generator, nSamples);
+    vguard<Sampler::Logger*> sampler_loggers;
+    for (auto logger : loggers)
+      sampler_loggers.push_back(logger);
+    Sampler::run (samplers, generator, nSamples, sampler_loggers);
 
     for (size_t n = 0; n < datasets.size(); ++n) {
       Dataset& dataset = datasets[n];
